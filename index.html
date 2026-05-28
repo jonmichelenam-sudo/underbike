@@ -666,7 +666,18 @@ async function tryLogin(){
       else sessionStorage.setItem(HASH_KEY,ses);
       window._sessionUser=user;
       setLoginMsg('✓ Acceso correcto','ok');
-      setTimeout(()=>window.initApp&&window.initApp(),400);
+      // Esperar hasta que initApp esté disponible (el módulo puede tardar en cargar)
+      let intentos=0;
+      const esperar=setInterval(()=>{
+        intentos++;
+        if(window.initApp){
+          clearInterval(esperar);
+          window.initApp();
+        } else if(intentos>100){
+          clearInterval(esperar);
+          setLoginMsg('Error: la app tardó demasiado en cargar. Recarga la página.','err');
+        }
+      },100);
     }else{
       const lock=JSON.parse(localStorage.getItem(LOCK_KEY)||'{"intentos":0}');
       lock.intentos=(lock.intentos||0)+1;
@@ -721,10 +732,13 @@ document.addEventListener('DOMContentLoaded',async function(){
 
   // Check sesión guardada
   const ok=await checkSession();
-  if(ok&&window.initApp)window.initApp();
-  else if(ok){
-    // initApp aún no cargó, esperar
-    const t=setInterval(()=>{if(window.initApp){clearInterval(t);window.initApp();}},100);
+  if(ok){
+    let intentos=0;
+    const esperar=setInterval(()=>{
+      intentos++;
+      if(window.initApp){clearInterval(esperar);window.initApp();}
+      else if(intentos>100){clearInterval(esperar);}
+    },100);
   }
 });
 </script>
